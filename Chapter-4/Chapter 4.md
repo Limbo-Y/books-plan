@@ -2,9 +2,9 @@
 
 ## 原始值与引用值
 
-**原始值（简单数据类型）：**JavaScript总共包含**6种**简单数据类型：`Undefined`、`Null`、`Boolean`、`Number`、`String` 和 `Symbol`。原始值是直接存储在栈中的简单数据段，也就是说，它们的值直接存储在变量访问的位置，我们可以直接**按值访问**。
+**原始值（简单数据类型）：** JavaScript总共包含 **6种** 简单数据类型：`Undefined`、`Null`、`Boolean`、`Number`、`String` 和 `Symbol`。原始值是直接存储在栈中的简单数据段，也就是说，它们的值直接存储在变量访问的位置，我们可以直接 **按值访问** 。
 
-**引用值（复杂数据类型）：**JavaScript中的引用值有很弱，如：`Object`、`Function`、`Array`等。由于引用值的大小会改变，所以不能将其存放在栈中，否则会降低变量查询速度，因此，其值存储在堆存储在堆中的对象，而放在变量的栈空间中的值是该对象存储在堆中的地址，也就是说，存储在变量处的值是一个指针（内存地址），指向存储对象的堆内存中。在操作对象时，实际上操作的是对该对象的引用（reference）而非实际的对象本身。所以，保存引用值的变量是**按引用访问**的。
+**引用值（复杂数据类型）：** JavaScript中的引用值有很弱，如：`Object`、`Function`、`Array`等。由于引用值的大小会改变，所以不能将其存放在栈中，否则会降低变量查询速度，因此，其值存储在堆存储在堆中的对象，而放在变量的栈空间中的值是该对象存储在堆中的地址，也就是说，存储在变量处的值是一个指针（内存地址），指向存储对象的堆内存中。在操作对象时，实际上操作的是对该对象的引用（reference）而非实际的对象本身。所以，保存引用值的变量是 **按引用访问** 的。
 
 ## 动态属性
 
@@ -51,7 +51,7 @@ console.log(typeof name1); // string
 console.log(typeof name2); // object
 ```
 
-![image-20211020150852317](Chapter 4.assets/image-20211020150852317.png)
+![image-20211020150852317](https://cdn.jsdelivr.net/gh/Limbo-Y/MyImg@master/JavaScript-Learning/image-20211020150852317.2atb4qx0qatc.png)
 
 ## 值的复制
 
@@ -63,7 +63,7 @@ let num1 = 5;
 let num2 = num1;
 ```
 
-![image-20211020151647907](Chapter 4.assets/image-20211020151647907.png)
+![image-20211020151647907](https://cdn.jsdelivr.net/gh/Limbo-Y/MyImg@master/JavaScript-Learning/image-20211020151647907.1o7p8oyg461s.png)
 
 ```javascript
 // 引用值的复制
@@ -73,7 +73,7 @@ obj1.name = "Nicholas";
 console.log(obj2.name); // "Nicholas"
 ```
 
-![image-20211020152218360](Chapter 4.assets/image-20211020152218360.png)
+![image-20211020152218360](https://cdn.jsdelivr.net/gh/Limbo-Y/MyImg@master/JavaScript-Learning/image-20211020152218360.44gxr6ipets0.png)
 
 ## 传递参数
 
