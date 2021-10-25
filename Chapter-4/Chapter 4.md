@@ -205,41 +205,202 @@ console.log(a.call(undefined));				// [object Undefined]
 console.log(a.call(null));					// [object Null]
 ```
 
-# 执行上下文和作用域
+
+
+# 执行上下文、作用域、闭包
+
+## 执行上下文
+
+执行上下文 ( execution context ) 就是当前 JavaScript 代码被解析和执行时所在环境的抽象概念。
 
 变量或函数的上下文决定了它们可以访问哪些数据，以及它们的行为，这个概念在 JavaScript 中非常重要。每个上下文都有一个关联的**变量对象**，而这个上下文中定义的所有变量和函数都存在于这个对象上。
 
 全局上下文是最外层的上下文，在浏览器中全局上下文就是我们常说的 window 对象（在 node.js 环境中就不是window了），也就是说window就是全局上下文关联的变量对象，所有通过 var 定义的全局变量和函数都会成为 window 对象的属性和方法。
 
-使用 let 和 const 的顶级声明不会定义在全局上下文中，但在作用域链解析上效果是一样的。上下文在其所有代码都执行完毕后会被销毁，包括定义在它上面的所有变量和函数（全局上下文在应用程序退出前才会被销毁，比如关闭网页或退出浏览器）。
+- 全局执行上下文：默认、最底层、全局唯一；
+- 函数执行上下文：每次调用函数时，都会为该函数创建一个新的执行上下文，包括调用自己；
+- Eval 函数执行上下文：运行在 eval 函数中的代码拥有自己的执行上下文。
 
-举个例子：
-我国有两个城市——北京和上海，函数Beijing和函数Shanghai定义在China中，他们的上下文都是China，可以互相调用。
-而作用域就是一个变量或者函数能起作用的区域，比如定义的person变量，它的作用域就是China函数的范围，在China函数外围就无法访问到person变量。
+### 执行上下文堆栈
+
+在一个 JavaScript 程序中，必定会产生多个执行上下文，JavaScript 引擎会以栈的方式来处理它们，这个栈我们称其为函数调用栈 ( call stack )。栈底永远都是全局上下文，而栈顶就是当前正在执行的上下文。
+
+当浏览器首次载入脚本，默认进入全局执行上下文。每当发生函数调用，将创建一个新的执行上下文，并将新创建的上下文压入执行栈的顶部。浏览器将总会执行栈顶的执行上下文，一旦当前上下文函数执行结束，它将被从栈顶弹出，并将上下文控制权交给当前的栈。
+
+### 执行上下文的创建与执行
+
+在创建阶段，总共发生三件事情：
+
+1. 确定 this 的值，也被称为 This Binding。
+2. LexicalEnvironment（词法环境） 组件被创建。
+3. VariableEnvironment（变量环境） 组件被创建。
 
 ```javascript
-function China() {
-	console.log(person);	// 暂时性死区，ReferenceError: Cannot access 'person' before initialization
-
-    function Beijing() {
-        console.log('beijing');
-        console.log(person);
-    }
-    
-	function Shanghai() {
-        console.log('shanghai');
-        console.log(person);
-    }
-    
-    let person = 'ZhangSan';
+ExecutionContext = {  
+    ThisBinding = <this value>,  
+    LexicalEnvironment = { ... },  
+    VariableEnvironment = { ... },  
 }
-
-console.log(person);	// ReferenceError: person is not defined
 ```
 
-但是虽然作用域是在China函数的整个范围，但是在声明变量之前是不能使用的，这就叫做**暂时性死区**，但是如果person变量是使用 var 声明的，这种行为就会由于变量提升而合法化。所谓**变量提升**，就是使用 var 声明的变量通通会放在作用域的最前面声明，不管你代码是写在哪里声明的。
+#### This Binding
 
-当访问一个变量时，首先在当前的局部上下文查找，如果没找到该变量则进入上一层局部上下文，直到全局上下文。比如在Beijing函数中打印了person变量，Beijing函数中没有定义该变量，那么就进入China的上下文寻找。
+- 全局执行上下文中，this 的值指向全局对象，在浏览器中，this 的值指向 window 对象
+- 函数执行上下文中，this 的值取决于函数的调用方式。如果它被一个对象引用调用，那么 this 的值被设置为该对象，否则 this 的值被设置为全局对象或 undefined（严格模式下）
+- 在构造函数模式中，类中 (函数体中) 出现的 this.xxx=xxx 中的 this 是当前类的一个实例
+- call、apply 和 bind，this 是第一个参数
+- 箭头函数没有自己的 this，看其外层的是否有函数，如果有，外层函数的 this 就是内部箭头函数的 this，如果没有，则 this 是 window
+
+#### LexicalEnvironment
+
+词法环境由两部分组成：
+
+- 环境记录（EnvironmentRecord）：存储变量和函数声明的实际位置
+- 对外部环境的引用（outer）：访问外部词法环境
+
+分为两种类型：
+
+- 全局词法环境：
+  - EnvironmentRecord 叫*对象环境记录*，包含一个全局对象（window 对象）及其关联的方法和属性（例如数组方法）以及任何用户自定义的全局变量，this 的值指向这个全局对象；
+  - outer 为 `null`。
+
+- 函数词法环境：
+  - EnvironmentRecord 叫*声明性环境记录*， 除了相应的变量和函数声明，还包含了一个 `arguments` 对象，该对象包含了索引和传递给函数的参数之间的映射以及传递给函数的参数的长度（数量）；
+  - outer 可以是全局环境，也可以是包含内部函数的外部函数环境。
+
+#### VariableEnvironment
+
+变量环境也是一个词法环境，具有上面定义的词法环境的所有属性。
+
+在ES6中，LexicalEnvironment 组件和 VariableEnvironment 组件的区别在于前者用于存储函数声明和变量（ let 和 const ）绑定，而后者仅用于存储变量（ var ）绑定。
+
+举个例子：
+
+```javascript
+let a = 20;  
+const b = 30;  
+var c;
+
+function multiply(e, f) {  
+    var g = 20;  
+    return e * f * g;  
+}
+
+c = multiply(20, 30);
+```
+
+对应的执行上下文：
+
+```javascript
+// 全局执行上下文
+GlobalExectionContext = {
+
+  ThisBinding: <Global Object>,
+
+  LexicalEnvironment: {  
+    EnvironmentRecord: {  
+      Type: "Object",  
+      // 标识符绑定在这里  
+      a: < uninitialized >,    // 全局变量声明（let 或 const 定义的变量，创建时未初始化，声明前使用报错，执行阶段会置为 undefined）
+      b: < uninitialized >,  
+      multiply: < func >  // 全局函数声明
+    }  
+    outer: <null>  
+  },
+
+  VariableEnvironment: {  
+    EnvironmentRecord: {  
+      Type: "Object",  
+      // 标识符绑定在这里  
+      c: undefined,  // 全局变量声明（var 定义的变量，声明前访问不报错）
+    }  
+    outer: <null>  
+  }  
+}
+
+// multiply函数局部执行上下文
+FunctionExectionContext = {  
+   
+  ThisBinding: <Global Object>,
+
+  LexicalEnvironment: {  
+    EnvironmentRecord: {  
+      Type: "Declarative",  
+      // 标识符绑定在这里  
+      Arguments: {0: 20, 1: 30, length: 2},  // 函数参数
+    },  
+    outer: <GlobalLexicalEnvironment>  
+  },
+
+  VariableEnvironment: {  
+    EnvironmentRecord: {  
+      Type: "Declarative",  
+      // 标识符绑定在这里  
+      g: undefined  // 函数内部变量声明
+    },  
+    outer: <GlobalLexicalEnvironment>  
+  }  
+}
+
+```
+
+## 作用域
+
+作用域是变量与函数的可访问范围，即作用域控制着变量与函数的可见性和生命周期。同样的，作用域也分为全局作用域和局部作用域。
+
+全局作用域包含以下几种情境：
+
+1. 最外层函数和在最外层函数外面定义的变量拥有全局作用域
+2. 所有末定义直接赋值的变量自动声明为拥有全局作用域
+3. 所有window对象的属性拥有全局作用域
+
+局部作用域又叫做函数作用域，是指声明在函数内部的变量。只能在局部访问。
+
+```javascript
+var a = 1;
+function fn() {
+    var sum = 0;
+    alert(a); // 1   局部访问全局
+}
+fn(); // 先执行
+alert(sum); // 报错  全局访问局部
+```
+
+执行上下文与作用域的区别：
+
+- 作用域在函数定义时确定，而不是在函数调用时确定
+- 作用域中没有变量，要通过作用域对应的执行上下文环境来获取变量的值
+- 同一个作用域下，不同的调用会产生不同的执行上下文环境，继而产生不同的变量的值
+- 作用域中变量的值是在执行过程中产生的确定的
+
+### 作用域链
+
+JavaScript里一切都是对象，函数也是对象。函数对象和其它对象一样，拥有可以通过代码访问的属性和一系列仅供JavaScript引擎访问的内部属性。其中一个内部属性是`[[Scope]]`，该内部属性包含了函数被创建的作用域中对象的集合，这个集合被称为函数的作用域链，它决定了哪些数据能被函数访问。
+
+函数在执行的过程中，先从自己内部寻找变量，如果找不到，再从 **创建当前函数所在的作用域** 去找，从此往上，也就是向上一级找，直到找到全局作用域。
+
+通过例子理解一下：
+
+```javascript
+let name = 'wby';
+let a = {
+    sayName: function(){
+        console.log(name);	// name这个不在当前作用域中声明的变量叫自由变量
+    }
+}
+a.sayName(); //wby
+
+let person1 = function (){
+    let name = 'lyy';
+    let skill = a.sayName;
+    skill(); //wby
+}
+person1();
+```
+
+这里先声明了两个变量 name 和 a，a是一个对象里面包含一个名为sayName的函数，当执行通过a调用sayName函数`a.sayName()`，打印wby，这块比较好理解，当访问一个变量时，首先在当前的局部上下文查找，查找到第一行定义的name变量，打印name变量的值。
+
+然后声明了一个person1函数，函数中又声明了一个重名的name变量，一个skill变量被赋值为对象a中的sayName函数，然后调用skill函数。调用person1还是打印了wby，不是说先在当前的局部上下文查找变量吗，明明在person1这个上下文中含有名为name的变量，为啥不打印lyy呢？因为函数的作用域是声明时的作用域，不是执行时的作用域，所以在调用skill函数时，寻找name变量的过程和之前一样，要到创建sayName函数的作用域中找，不管在哪调用。
 
 ## var、let 与 const
 
@@ -265,9 +426,25 @@ let result = add(10, 20); // 30
 console.log(sum); // 30
 ```
 
+```javascript
+// var 与 function 的变量提升，能在声明变量之前访问到
+// 结合之前的执行上下文过程，var声明的变量在代码运行前就被绑定在当前上下文中，并初始化为undefined
+
+console.log(typeof foo); // function
+console.log(typeof bar); // undefined
+
+var bar = function() {
+    return 'world';
+};
+
+function foo() {
+    return 'hello';
+}
+```
+
 ### let
 
-let的作用域是块级作用域，凡是用`{}`括起来的区域，在里面使用 let 声明的变量的作用域就是`{}`括起来的区域，而且 let 不能对一个变量进行声明二次声明
+let的作用域是块级作用域，凡是用`{}`括起来的区域，在里面使用 let 声明的变量的作用域就是`{}`括起来的区域，而且 let 不能对一个变量进行声明二次声明。暂时性死区：变量在声明前，是不能使用的。
 
 ```javascript
 {
@@ -285,6 +462,14 @@ var a;
     let b;
 }
 // SyntaxError: 标识符b 已经声明过了
+```
+
+```javascript
+// 暂时性死区
+function fn() {
+	name = 'ZhangSan';
+    let name;
+}
 ```
 
 ### const
@@ -305,15 +490,64 @@ o3.name = 'Jake';
 console.log(o3.name); // undefined
 ```
 
+## 闭包
+
+闭包的概念：能够读取其他函数内部变量的函数。
+
+闭包产生的两种情况：
+
+- 函数作为返回值
+
+  ```javascript
+  var x = 10;
+  function fn() {
+      var x = 20;
+      return function f() {
+          console.log(x);
+      };
+  }
+  
+  var show = fn();
+  // 执行 fn() 时，返回的是一个函数。函数的特别之处在于可以创建一个独立的作用域。
+  // 而正巧合的是，返回的这个函数体中，还有一个自由变量 x 要引用 fn 作用域下的上下文环境中的 x。
+  // 因此到这里 fn() 的执行上下文不被销毁，全局上下文变为活跃状态
+  
+  show(); // 函数作为返回值，显示 20
+  ```
+
+- 函数作为返回值，显示 20函数作为参数传递
+
+  ```javascript
+  var x = 10;
+  function fn() {
+      console.log(x);
+  }
+  
+  (function (f) {
+      var x = 20;
+      f(); 
+  })(fn);	// 显示 10
+  // fn 函数作为参数传递，到创建 fn 函数的作用域中找
+  ```
+
+
+
 # 垃圾回收
 
 ## 标记清理法
 
-标记清理法分为**标记**和**清理**两个阶段。标记阶段即为所有活动对象做上标记，清理阶段则把没有标记（也就是非活动对象）销毁。
+标记清理法分为 **标记** 和 **清理** 两个阶段。标记阶段即为所有活动对象做上标记，清理阶段则把没有标记（也就是非活动对象）销毁。
 
-- 垃圾收集器在运行时会给内存中的所有变量都加上一个标记，假设内存中所有对象都是垃圾，全标记为0
-- 然后从各个根对象开始遍历，把不是垃圾的节点改成1
-- 清理所有标记为0的垃圾，销毁并回收它们所占用的内存空间
+- 垃圾收集器在运行时会给内存中的所有变量都加上一个标记，假设内存中所有对象都是垃圾，把所有的标记都清空
+
+  ![image](https://cdn.jsdelivr.net/gh/Limbo-Y/MyImg@master/JavaScript-Learning/image.1y0v42yasbv.png)
+
+- 然后从各个根对象开始遍历（根对象可以理解为window对象，全局作用域），把不是垃圾的节点（活动对象）打上标记
+
+  ![image](https://cdn.jsdelivr.net/gh/Limbo-Y/MyImg@master/JavaScript-Learning/image.2xuv9immlu20.png)
+
+- 清理所有没有标记的垃圾，销毁并回收它们所占用的内存空间
+
 - 等待下一轮垃圾回收
 
 ## 引用计数法
@@ -336,7 +570,7 @@ function test(){
 }
 ```
 
-存在的问题：循环引用。对象 A 和 B 通过各自的属性相互引用着，按照上文的引用计数策略，它们的引用数量都是 2，但是，在函数 test 执行完成之后，对象 A 和 B 是要被清理的，但使用引用计数则不会被清理，因为它们的引用数量不会变成 0，假如此函数在程序中被多次调用，那么就会造成大量的内存不会被释放。
+存在的问题：循环引用。对象 A 和 B 通过各自的属性相互引用着，按照上文的引用计数策略，它们的引用数量都是 2，但是，在函数 test 执行完成之后，对象 A 和 B 是要被清理的，但使用引用计数则不会被清理，因为它们的引用数量不会变成 0，仍然为2（A自身指向Object，B的属性a也指向A指向的Object）。假如此函数在程序中被多次调用，那么就会造成大量的内存不会被释放。
 
 再用标记清除的角度看一下，当函数结束后，两个对象都不在作用域中，A 和 B 都会被当作非活动对象来清除掉，相比之下，引用计数则不会释放，也就会造成大量无用内存占用，这也是后来放弃引用计数，使用标记清除的原因之一。
 
@@ -377,10 +611,11 @@ function test(){
 
 4. 静态分配与对象池
 
+   这里有一个addVector函数，传入a和b两个对象，计算两个对象的和并赋值给新建的对象resultant，最后返回resultant。
+
+   如果resultant对象的生命周期很短，比如在这个addVector函数函数中，就4行代码，它会很快失去所有对它的引用，成为可以被回收的值。假如addVector函数被频繁地调用，就不断有resultant对象被创建，失去引用，被回收。
+
    ```javascript
-   // 调用这个函数会在堆上创建一个新对象，然后修改它，最后再把它返回给调用者。
-   // 如果这个对象的生命周期很短，那么它会很快失去所有对它的引用，成为可以被回收的值。
-   // 假如这个函数频繁被调用，那么垃圾回收调度程序会发现这里对象更替的速度很快，从而会更频繁地安排垃圾回收。
    function addVector(a, b) {
        let resultant = new Vector();
        resultant.x = a.x + b.x;
@@ -388,15 +623,25 @@ function test(){
        return resultant;
    }
    
-   // 比起上述的函数定义方法，可以使用一个在函数外部定义的对象
+   let a = {x: 10, y: 5}, b = {x: -3, y: 6};
+   let resultant = addVector(a, b);
+   ```
+
+   静态分配：比起上述的函数定义方法，可以使用一个在函数外部定义的对象
+
+   ```javascript
    function addVector(a, b, resultant) {
        resultant.x = a.x + b.x;
        resultant.y = a.y + b.y;
-       return resultant;
    }
+   
+   let a = {x: 10, y: 5}, b = {x: -3, y: 6}, resultant = {};
+   addVector(a, b, resultant);
    ```
 
-   静态分配需要在别的地方声明对象resultant，而对象池就可以解决这个问题，对象池相当于共享对象，在需要的时候拿一个出来用，不用了就还回去。
+   静态分配需要在别的地方声明对象a、b、resultant，最后这些变量也难逃回收的宿命。
+
+   而对象池就可以解决这个问题，对象池相当于一个初始化好的对象的集合，将对象提供给调用者，在需要的时候拿一个出来用，不用了就还回去。可以有效地减少频繁创建和销毁对象带来的成本，实现对象的缓存和复用。
 
    ```javascript
    // vectorPool 是已有的对象池
@@ -418,3 +663,9 @@ function test(){
    v2 = null;
    v3 = null;
    ```
+
+# 参考资料
+
+1. [学习JavaScript的执行上下文、作用域和闭包](https://juejin.cn/post/6975139010918236168)
+2. [「硬核JS」你真的了解垃圾回收机制吗](https://juejin.cn/post/6981588276356317214)
+3. [简单了解JavaScript垃圾回收机制](https://juejin.cn/post/6844903556265279502)
